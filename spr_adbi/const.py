@@ -1,0 +1,8 @@
+STATUS_SUCCESS = 'SUCCESS'
+STATUS_ERROR = 'ERROR'
+PATH_STDIN = "input/stdin"
+PATH_ARGS = "input/args"
+PATH_STATUS = "status"
+PATH_PROGRESS = "progress"
+
+ENV_KEY_ADBI_BASE_DIR = 'ADBI_BASE_DIR'

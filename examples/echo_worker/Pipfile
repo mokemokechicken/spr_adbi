@@ -4,11 +4,9 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-"boto3" = "*"
+spr-adbi = {ref = "master", git = "https://github.com/mokemokechicken/spr_adbi.git"}
 
 [dev-packages]
-pytest = "*"
-pytest-mock = "*"
 
 [requires]
 python_version = "3.6"
