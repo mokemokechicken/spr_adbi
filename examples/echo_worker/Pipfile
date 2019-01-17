@@ -8,5 +8,8 @@ spr-adbi = {ref = "master", git = "https://github.com/mokemokechicken/spr_adbi.g
 
 [dev-packages]
 
+[scripts]
+echo = "python src/worker/echo/run.py"
+
 [requires]
 python_version = "3.6"
