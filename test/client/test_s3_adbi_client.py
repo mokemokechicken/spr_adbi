@@ -19,7 +19,7 @@ def test_create_s3_client():
     assert isinstance(obj, t.ADBIClient)
     assert obj.base_dir == WORKING_DIR
 
-    obj.prepare_writer("pid")
+    obj._prepare_writer("pid")
     assert isinstance(obj.io_client, t.ADBIClientS3IO)
     assert obj.io_client.base_dir == f"{WORKING_DIR}/pid"
 

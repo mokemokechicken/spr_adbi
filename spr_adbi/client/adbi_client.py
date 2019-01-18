@@ -36,16 +36,6 @@ class ADBIClient:
         self.io_client: ADBIClientIO = None
         self._setup()
 
-    def _setup(self):
-        pass
-
-    def prepare_queue_client(self):
-        return boto3.resource('sqs').get_queue_by_name(QueueName=self.options[ENV_KEY_SQS_NAME])
-
-    def prepare_writer(self, process_id):
-        target_dir = f"{self.base_dir}/{process_id}"
-        self.io_client = ADBIClientS3IO(target_dir)
-
     def request(self, func_id, args: Optional[Union[List, Tuple]] = None, stdin: Optional[Union[bytes, str]] = None,
                 input_info: dict = None, input_file_info: dict = None, max_retry=None):
         """
@@ -64,15 +54,33 @@ class ADBIClient:
         assert input_info is None or isinstance(input_info, dict)
         assert input_file_info is None or isinstance(input_file_info, dict)
 
-        process_id = self.create_process_id(func_id)
-        self.prepare_writer(process_id)
-        self.write_input_data(args, stdin, input_info, input_file_info)
+        process_id = self._create_process_id(func_id)
+        self._prepare_writer(process_id)
+        self._write_input_data(args, stdin, input_info, input_file_info)
         message = json.dumps([func_id, self.io_client.base_dir])
 
-        queue = self.prepare_queue_client()
+        queue = self._prepare_queue_client()
         response = queue.send_message(MessageBody=message)
+        return ADBIJob(base_dir=self.io_client.base_dir,
+                       io_client=self.io_client,
+                       queue_name=self.queue_name,
+                       queue_message_id=response.get('MessageId'))
 
-    def write_input_data(self, args: Iterable[str], stdin, input_file: dict, input_file_info: dict):
+    def _setup(self):
+        pass
+
+    def _prepare_queue_client(self):
+        return boto3.resource('sqs').get_queue_by_name(QueueName=self.queue_name)
+
+    @property
+    def queue_name(self):
+        return self.options[ENV_KEY_SQS_NAME]
+
+    def _prepare_writer(self, process_id):
+        target_dir = f"{self.base_dir}/{process_id}"
+        self.io_client = ADBIClientS3IO(target_dir)
+
+    def _write_input_data(self, args: Iterable[str], stdin, input_file: dict, input_file_info: dict):
         if args:
             self.io_client.write(PATH_ARGS, json.dumps(args, ensure_ascii=False))
         if stdin:
@@ -89,7 +97,7 @@ class ADBIClient:
                 self.io_client.write_file(f"{PATH_INPUT_FILES}/{key}", path)
 
     @staticmethod
-    def create_process_id(func_id) -> str:
+    def _create_process_id(func_id) -> str:
         time_str = datetime.now(tz=JST).strftime('%Y%m%d.%H%M%S.JST')
         random_str = uuid4().hex
         return f"{time_str}-{func_id}-{random_str}"
@@ -161,7 +169,11 @@ class ADBIClientS3IO(ADBIClientIO):
 
 
 class ADBIJob:
-    pass
+    def __init__(self, base_dir, io_client, queue_name=None, queue_message_id=None):
+        self.base_dir: str = base_dir
+        self.io_client: ADBIClientIO = io_client
+        self.queue_name: Optional[str] = queue_name
+        self.queue_message_id: Optional[str] = queue_message_id
 
 
 class ADBIOutput:
