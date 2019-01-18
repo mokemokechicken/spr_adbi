@@ -6,7 +6,9 @@ from pathlib import Path
 from typing import List, Optional, Union, Iterable, Tuple
 from uuid import uuid4
 
-from spr_adbi.const import ENV_KEY_ADBI_BASE_DIR, PATH_ARGS, PATH_STDIN, PATH_INPUT_FILES
+import boto3
+
+from spr_adbi.const import ENV_KEY_ADBI_BASE_DIR, PATH_ARGS, PATH_STDIN, PATH_INPUT_FILES, ENV_KEY_SQS_NAME
 from spr_adbi.util import s3_util
 from spr_adbi.util.datetime_util import JST
 from spr_adbi.util.s3_util import get_s3_client, upload_fileobj_to_s3, upload_file_to_s3, download_as_data_from_s3, \
@@ -22,12 +24,13 @@ def create_client(env: dict = None):
     env = env or {}
     env_dict = dict(os.environ)
     env_dict.update(env)
-    base_dir = env_dict.get(ENV_KEY_ADBI_BASE_DIR) or "tmp"
+    base_dir = env_dict.get(ENV_KEY_ADBI_BASE_DIR)
     return ADBIClient(base_dir, **env_dict)
 
 
 class ADBIClient:
     def __init__(self, base_dir: str, **kwargs):
+        assert base_dir.startswith("s3://")
         self.base_dir = base_dir
         self.options = kwargs
         self.io_client: ADBIClientIO = None
@@ -36,12 +39,12 @@ class ADBIClient:
     def _setup(self):
         pass
 
+    def prepare_queue_client(self):
+        return boto3.resource('sqs').get_queue_by_name(QueueName=self.options[ENV_KEY_SQS_NAME])
+
     def prepare_writer(self, process_id):
         target_dir = f"{self.base_dir}/{process_id}"
-        if target_dir.startswith("s3://"):
-            self.io_client = ADBIClientS3IO(target_dir)
-        else:
-            self.io_client = ADBIClientLocalIO(target_dir)
+        self.io_client = ADBIClientS3IO(target_dir)
 
     def request(self, func_id, args: Optional[Union[List, Tuple]] = None, stdin: Optional[Union[bytes, str]] = None,
                 input_info: dict = None, input_file_info: dict = None, max_retry=None):
@@ -64,6 +67,10 @@ class ADBIClient:
         process_id = self.create_process_id(func_id)
         self.prepare_writer(process_id)
         self.write_input_data(args, stdin, input_info, input_file_info)
+        message = json.dumps([func_id, self.io_client.base_dir])
+
+        queue = self.prepare_queue_client()
+        response = queue.send_message(MessageBody=message)
 
     def write_input_data(self, args: Iterable[str], stdin, input_file: dict, input_file_info: dict):
         if args:
@@ -122,27 +129,6 @@ class ADBIClientIO:
 
     def _get_output_filenames(self) -> List[str]:
         raise NotImplemented()
-
-
-class ADBIClientLocalIO(ADBIClientIO):
-    def _write(self, path, data: bytes):
-        path = Path(self.base_dir) / path
-        os.makedirs(path.parent, exist_ok=True)
-        with path.open("wb") as f:
-            f.write(data)
-
-    def _write_file(self, path, local_path):
-        with open(local_path, "rb") as f:
-            self.write(path, f.read())
-
-    def _read(self, path) -> bytes:
-        path = Path(self.base_dir) / path
-        with path.open("rb") as f:
-            return f.read()
-
-    def _get_output_filenames(self) -> List[str]:
-        input_dir = Path(f"{self.base_dir}/output")
-        return [str(x.relative_to(self.base_dir)) for x in input_dir.glob("**/*")]
 
 
 class ADBIClientS3IO(ADBIClientIO):
