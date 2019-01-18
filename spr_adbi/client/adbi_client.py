@@ -20,8 +20,10 @@ def create_client(env: dict = None):
     :rtype: ADBIClient
     """
     env = env or {}
-    base_dir = env.get(ENV_KEY_ADBI_BASE_DIR) or os.environ.get(ENV_KEY_ADBI_BASE_DIR) or "tmp"
-    return ADBIClient(base_dir, **env)
+    env_dict = dict(os.environ)
+    env_dict.update(env)
+    base_dir = env_dict.get(ENV_KEY_ADBI_BASE_DIR) or "tmp"
+    return ADBIClient(base_dir, **env_dict)
 
 
 class ADBIClient:
@@ -62,7 +64,6 @@ class ADBIClient:
         process_id = self.create_process_id(func_id)
         self.prepare_writer(process_id)
         self.write_input_data(args, stdin, input_info, input_file_info)
-
 
     def write_input_data(self, args: Iterable[str], stdin, input_file: dict, input_file_info: dict):
         if args:

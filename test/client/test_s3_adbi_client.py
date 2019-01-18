@@ -11,8 +11,11 @@ WORKING_DIR = 's3://my_bucket/adbi'
 def test_create_s3_client():
     obj = t.create_client({ENV_KEY_ADBI_BASE_DIR: WORKING_DIR})
     assert isinstance(obj, t.ADBIClient)
-    assert obj.io_client.base_dir == WORKING_DIR
+    assert obj.base_dir == WORKING_DIR
+
+    obj.prepare_writer("pid")
     assert isinstance(obj.io_client, t.ADBIClientS3IO)
+    assert obj.io_client.base_dir == f"{WORKING_DIR}/pid"
 
 
 class TestADBIClientS3:

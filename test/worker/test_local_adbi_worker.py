@@ -1,6 +1,7 @@
 import json
 import shutil
 from pathlib import Path
+from pytest_mock import MockFixture
 
 import spr_adbi.worker.adbi_worker as t
 
@@ -35,11 +36,12 @@ class TestLocalADBIWorker:
         obj = t.create_worker([WORKING_DIR, "xxx", "yyy"])
         assert obj.args() == ["xxx", "yyy"]
 
-    def test_stdin(self):
+    def test_stdin(self, mocker: MockFixture):
         self.in_dir.mkdir(parents=True)
         data = "abcdef\n123456".encode()
         with open(self.in_dir / "stdin", "wb") as f:
             f.write(data)
+        mocker.patch('os.isatty', return_value=True)
         assert self.obj.stdin() == data
 
     def test_read(self):
