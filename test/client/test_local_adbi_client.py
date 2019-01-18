@@ -14,8 +14,8 @@ WP = Path(WORKING_DIR)
 def test_create_local_client():
     obj = t.create_client({ENV_KEY_ADBI_BASE_DIR: '/path/to/base_dir'})
     assert isinstance(obj, t.ADBIClient)
-    assert obj.writer.base_dir == '/path/to/base_dir'
-    assert isinstance(obj.writer, t.ADBIClientLocalIO)
+    assert obj.io_client.base_dir == '/path/to/base_dir'
+    assert isinstance(obj.io_client, t.ADBIClientLocalIO)
 
 
 class TestADBIClientLocal:

@@ -1,10 +1,14 @@
+import json
 import os
+from datetime import datetime
 from io import BytesIO
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Iterable, Tuple
+from uuid import uuid4
 
-from spr_adbi.const import ENV_KEY_ADBI_BASE_DIR
+from spr_adbi.const import ENV_KEY_ADBI_BASE_DIR, PATH_ARGS, PATH_STDIN, PATH_INPUT_FILES
 from spr_adbi.util import s3_util
+from spr_adbi.util.datetime_util import JST
 from spr_adbi.util.s3_util import get_s3_client, upload_fileobj_to_s3, upload_file_to_s3, download_as_data_from_s3, \
     split_bucket_and_key
 
@@ -22,29 +26,65 @@ def create_client(env: dict = None):
 
 class ADBIClient:
     def __init__(self, base_dir: str, **kwargs):
-        if base_dir.startswith("s3://"):
-            self.writer = ADBIClientS3IO(base_dir)
-        else:
-            self.writer = ADBIClientLocalIO(base_dir)
+        self.base_dir = base_dir
         self.options = kwargs
+        self.io_client: ADBIClientIO = None
         self._setup()
 
     def _setup(self):
         pass
 
-    def request(self, func_id, args: List[str] = None, stdin: Optional[Union[bytes, str]] = None,
+    def prepare_writer(self, process_id):
+        target_dir = f"{self.base_dir}/{process_id}"
+        if target_dir.startswith("s3://"):
+            self.io_client = ADBIClientS3IO(target_dir)
+        else:
+            self.io_client = ADBIClientLocalIO(target_dir)
+
+    def request(self, func_id, args: Optional[Union[List, Tuple]] = None, stdin: Optional[Union[bytes, str]] = None,
                 input_info: dict = None, input_file_info: dict = None, max_retry=None):
         """
 
         :param func_id:
         :param args:
         :param stdin:
-        :param input_info:
-        :param input_file_info:
+        :param input_info: 'input/files' 以下に書き込む key が相対PATH, value がデータ
+        :param input_file_info: 'input/files' 以下に書き込む key が相対PATH, value が Local File Path
         :param max_retry:
         :rtype: ADBIJob
         """
-        pass
+        assert isinstance(func_id, str)
+        assert args is None or isinstance(args, (list, tuple))
+        assert stdin is None or isinstance(stdin, (bytes, str))
+        assert input_info is None or isinstance(input_info, dict)
+        assert input_file_info is None or isinstance(input_file_info, dict)
+
+        process_id = self.create_process_id(func_id)
+        self.prepare_writer(process_id)
+        self.write_input_data(args, stdin, input_info, input_file_info)
+
+
+    def write_input_data(self, args: Iterable[str], stdin, input_file: dict, input_file_info: dict):
+        if args:
+            self.io_client.write(PATH_ARGS, json.dumps(args, ensure_ascii=False))
+        if stdin:
+            self.io_client.write(PATH_STDIN, stdin)
+
+        if input_file:
+            for key, data in input_file.items():
+                if data is not None:
+                    assert isinstance(data, (bytes, str))
+                    self.io_client.write(f"{PATH_INPUT_FILES}/{key}", data)
+
+        if input_file_info:
+            for key, path in input_file_info.items():
+                self.io_client.write_file(f"{PATH_INPUT_FILES}/{key}", path)
+
+    @staticmethod
+    def create_process_id(func_id) -> str:
+        time_str = datetime.now(tz=JST).strftime('%Y%m%d.%H%M%S.JST')
+        random_str = uuid4().hex
+        return f"{time_str}-{func_id}-{random_str}"
 
 
 class ADBIClientIO:

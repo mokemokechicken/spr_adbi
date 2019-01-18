@@ -2,6 +2,7 @@ STATUS_SUCCESS = 'SUCCESS'
 STATUS_ERROR = 'ERROR'
 PATH_STDIN = "input/stdin"
 PATH_ARGS = "input/args"
+PATH_INPUT_FILES = "input/files"
 PATH_STATUS = "status"
 PATH_PROGRESS = "progress"
 
