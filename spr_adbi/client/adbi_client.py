@@ -218,10 +218,24 @@ class ADBIJob:
         else:
             return None
 
+    def get_output(self):
+        """
+
+        :rtype: ADBIOutput
+        """
+        return ADBIOutput(self.io_client)
+
 
 class ADBITimeout(Exception):
     pass
 
 
 class ADBIOutput:
-    pass
+    def __init__(self, io_client: ADBIClientIO):
+        self.io_client = io_client
+
+    def get_filenames(self) -> List[str]:
+        return self.io_client.get_output_filenames()
+
+    def get_file_content(self, filename) -> Optional[bytes]:
+        return self.io_client.read(filename)
