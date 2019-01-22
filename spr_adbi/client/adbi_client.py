@@ -8,13 +8,14 @@ from typing import List, Optional, Union, Iterable, Tuple
 from uuid import uuid4
 
 import boto3
+from botocore.exceptions import ClientError
 
 from spr_adbi.const import ENV_KEY_ADBI_BASE_DIR, PATH_ARGS, PATH_STDIN, PATH_INPUT_FILES, ENV_KEY_SQS_NAME, \
     PATH_STATUS, PATH_PROGRESS, STATUS_SUCCESS, STATUS_ERROR
 from spr_adbi.util import s3_util
 from spr_adbi.util.datetime_util import JST
 from spr_adbi.util.s3_util import get_s3_client, upload_fileobj_to_s3, upload_file_to_s3, download_as_data_from_s3, \
-    split_bucket_and_key
+    split_bucket_and_key, create_boto3_session_of_assume_role_delayed
 
 
 def create_client(env: dict = None):
@@ -26,6 +27,15 @@ def create_client(env: dict = None):
     env = env or {}
     env_dict = dict(os.environ)
     env_dict.update(env)
+
+    errors = []
+    if ENV_KEY_SQS_NAME not in env_dict:
+        errors.append(f'Please Specify SQS name by {ENV_KEY_SQS_NAME} Env Variable.')
+    if ENV_KEY_ADBI_BASE_DIR not in env_dict:
+        errors.append(f'Please Specify Base S3 Dir by {ENV_KEY_ADBI_BASE_DIR} Env Variable.')
+    if errors:
+        raise RuntimeError("\n\t" + "\n\t".join(errors))
+
     base_dir = env_dict.get(ENV_KEY_ADBI_BASE_DIR)
     return ADBIClient(base_dir, **env_dict)
 
@@ -36,6 +46,7 @@ class ADBIClient:
         self.env_base_dir = env_base_dir
         self.options = kwargs
         self.io_client: ADBIClientIO = None
+        self._aws_session = None
         self._setup()
 
     def request(self, func_id, args: Optional[Union[List, Tuple]] = None, stdin: Optional[Union[bytes, str]] = None,
@@ -72,8 +83,14 @@ class ADBIClient:
     def _setup(self):
         pass
 
+    @property
+    def aws_session(self):
+        if self._aws_session is None:
+            self._aws_session = create_boto3_session_of_assume_role_delayed()
+        return self._aws_session
+
     def _prepare_queue_client(self):
-        return boto3.resource('sqs').get_queue_by_name(QueueName=self.queue_name)
+        return self.aws_session.resource('sqs').get_queue_by_name(QueueName=self.queue_name)
 
     @property
     def queue_name(self):
@@ -158,8 +175,12 @@ class ADBIClientS3IO(ADBIClientIO):
 
     def _read(self, path: str) -> Optional[bytes]:
         path = f'{self.base_dir}/{path}'
-        # TODO: catch 404? -> return None
-        return download_as_data_from_s3(self.client, path)
+        try:
+            return download_as_data_from_s3(self.client, path)
+        except ClientError as e:
+            if str(e.response.get('Error', {}).get('Code')) == '404':
+                return None
+            raise e
 
     def _get_output_filenames(self) -> List[str]:
         key_list = s3_util.list_paths(self.client, f"{self.base_dir}/output/")
