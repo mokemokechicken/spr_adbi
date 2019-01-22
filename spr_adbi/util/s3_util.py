@@ -84,3 +84,9 @@ def list_paths(s3, s3_path):
     bucket_name, key = split_bucket_and_key(s3_path)
     response = s3.list_objects(Bucket=bucket_name, Prefix=key)
     return [x["Key"] for x in response.get("Contents") or []]
+
+
+def delete_file_on_s3(s3, s3_path):
+    logger.info(f"delete {s3_path}")
+    bucket_name, key = split_bucket_and_key(s3_path)
+    s3.delete_object(bucket_name, key)

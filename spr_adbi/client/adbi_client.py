@@ -137,6 +137,10 @@ class ADBIJob:
             return str(progress).strip()
 
     @property
+    def s3_uri(self):
+        return self.io_client.base_dir
+
+    @property
     def finished(self) -> bool:
         if not self._finished:
             status = self.get_status()

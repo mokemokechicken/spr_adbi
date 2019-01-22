@@ -6,7 +6,7 @@ from botocore.exceptions import ClientError
 
 from spr_adbi.util import s3_util
 from spr_adbi.util.s3_util import get_s3_client, upload_fileobj_to_s3, upload_file_to_s3, download_as_data_from_s3, \
-    split_bucket_and_key
+    split_bucket_and_key, delete_file_on_s3
 
 
 class ADBIIO:
@@ -29,6 +29,12 @@ class ADBIIO:
     def read(self, path) -> Optional[bytes]:
         return self._read(path)
 
+    def delete(self, path):
+        return self._delete(path)
+
+    def get_filenames(self) -> List[str]:
+        return self._get_filenames()
+
     def get_output_filenames(self) -> List[str]:
         return self._get_output_filenames()
 
@@ -41,7 +47,13 @@ class ADBIIO:
     def _read(self, path) -> bytes:
         raise NotImplemented()
 
+    def _delete(self, path):
+        raise NotImplemented()
+
     def _get_output_filenames(self) -> List[str]:
+        raise NotImplemented()
+
+    def _get_filenames(self) -> List[str]:
         raise NotImplemented()
 
 
@@ -68,8 +80,12 @@ class ADBIS3IO(ADBIIO):
                 return None
             raise e
 
-    def _get_output_filenames(self) -> List[str]:
-        key_list = s3_util.list_paths(self.client, f"{self.base_dir}/output/")
+    def _delete(self, path: str):
+        path = f'{self.base_dir}/{path}'
+        delete_file_on_s3(self.client, path)
+
+    def _get_filenames(self):
+        key_list = s3_util.list_paths(self.client, f"{self.base_dir}")
         ret = []
         _, base_key = split_bucket_and_key(self.base_dir)
         base_key = "/" + base_key
@@ -77,3 +93,7 @@ class ADBIS3IO(ADBIIO):
             relative_key = Path(key).relative_to(base_key)
             ret.append(str(relative_key))
         return ret
+
+    def _get_output_filenames(self) -> List[str]:
+        filenames = self._get_filenames()
+        return list(filter(lambda x: x.startswith("output/"), filenames))
