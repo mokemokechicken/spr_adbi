@@ -139,8 +139,9 @@ class WorkerManager:
     def start_worker(self, retry_idx: int) -> bool:
         log_dir = f"run-{retry_idx}"
         self.io_client.write(f"{log_dir}/start_time", datetime.now(tz=JST).isoformat())
-        success = stdout = stderr = None
         self.set_status(STATUS_RUNNING)
+
+        success = stdout = stderr = None
         try:
             success, stdout, stderr = self.run_container()
         except Exception as e:
