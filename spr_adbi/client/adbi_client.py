@@ -1,21 +1,15 @@
 import json
 import os
 from datetime import datetime
-from io import BytesIO
-from pathlib import Path
 from time import time, sleep
 from typing import List, Optional, Union, Iterable, Tuple
 from uuid import uuid4
 
-import boto3
-from botocore.exceptions import ClientError
-
 from spr_adbi.const import ENV_KEY_ADBI_BASE_DIR, PATH_ARGS, PATH_STDIN, PATH_INPUT_FILES, ENV_KEY_SQS_NAME, \
     PATH_STATUS, PATH_PROGRESS, STATUS_SUCCESS, STATUS_ERROR
-from spr_adbi.util import s3_util
+from spr_adbi.common.adbi_io import ADBIIO, ADBIS3IO
 from spr_adbi.util.datetime_util import JST
-from spr_adbi.util.s3_util import get_s3_client, upload_fileobj_to_s3, upload_file_to_s3, download_as_data_from_s3, \
-    split_bucket_and_key, create_boto3_session_of_assume_role_delayed
+from spr_adbi.util.s3_util import create_boto3_session_of_assume_role_delayed
 
 
 def create_client(env: dict = None):
@@ -45,7 +39,7 @@ class ADBIClient:
         assert env_base_dir.startswith("s3://")
         self.env_base_dir = env_base_dir
         self.options = kwargs
-        self.io_client: ADBIClientIO = None
+        self.io_client: ADBIIO = None
         self._aws_session = None
         self._setup()
 
@@ -98,7 +92,7 @@ class ADBIClient:
 
     def _prepare_writer(self, process_id):
         target_dir = f"{self.env_base_dir}/{process_id}"
-        self.io_client = ADBIClientS3IO(target_dir)
+        self.io_client = ADBIS3IO(target_dir)
 
     def _write_input_data(self, args: Iterable[str], stdin, input_file: dict, input_file_info: dict):
         if args:
@@ -123,80 +117,10 @@ class ADBIClient:
         return f"{time_str}-{func_id}-{random_str}"
 
 
-class ADBIClientIO:
-    def __init__(self, base_dir):
-        self.base_dir = base_dir
-        self._setup()
-
-    def _setup(self):
-        pass
-
-    def write(self, path, data: Union[str, bytes]):
-        assert isinstance(data, (str, bytes))
-        if isinstance(data, str):
-            data = data.encode()
-        self._write(path, data)
-
-    def write_file(self, path, local_path):
-        self._write_file(path, local_path)
-
-    def read(self, path) -> Optional[bytes]:
-        return self._read(path)
-
-    def get_output_filenames(self) -> List[str]:
-        return self._get_output_filenames()
-
-    def _write(self, path, data: bytes):
-        raise NotImplemented()
-
-    def _write_file(self, path, local_path):
-        raise NotImplemented()
-
-    def _read(self, path) -> bytes:
-        raise NotImplemented()
-
-    def _get_output_filenames(self) -> List[str]:
-        raise NotImplemented()
-
-
-class ADBIClientS3IO(ADBIClientIO):
-    client = None
-
-    def _setup(self):
-        self.client = get_s3_client()
-
-    def _write(self, path: str, data: bytes):
-        path = f'{self.base_dir}/{path}'
-        with BytesIO(data) as f:
-            upload_fileobj_to_s3(self.client, f, path)
-
-    def _write_file(self, path, local_path):
-        upload_file_to_s3(self.client, local_path, path)
-
-    def _read(self, path: str) -> Optional[bytes]:
-        path = f'{self.base_dir}/{path}'
-        try:
-            return download_as_data_from_s3(self.client, path)
-        except ClientError as e:
-            if str(e.response.get('Error', {}).get('Code')) == '404':
-                return None
-            raise e
-
-    def _get_output_filenames(self) -> List[str]:
-        key_list = s3_util.list_paths(self.client, f"{self.base_dir}/output/")
-        ret = []
-        _, base_key = split_bucket_and_key(self.base_dir)
-        base_key = "/" + base_key
-        for key in key_list:
-            relative_key = Path(key).relative_to(base_key)
-            ret.append(str(relative_key))
-        return ret
-
-
 class ADBIJob:
     def __init__(self, base_dir, io_client, queue_name=None, queue_message_id=None):
         self.base_dir: str = base_dir
-        self.io_client: ADBIClientIO = io_client
+        self.io_client: ADBIIO = io_client
         self.queue_name: Optional[str] = queue_name
         self.queue_message_id: Optional[str] = queue_message_id
         self._finished = False
@@ -252,7 +176,7 @@ class ADBITimeout(Exception):
 
 
 class ADBIOutput:
-    def __init__(self, io_client: ADBIClientIO):
+    def __init__(self, io_client: ADBIIO):
         self.io_client = io_client
 
     def get_filenames(self) -> List[str]:

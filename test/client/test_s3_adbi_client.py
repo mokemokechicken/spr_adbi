@@ -1,8 +1,5 @@
-import json
-import shutil
-from pathlib import Path
-
 import spr_adbi.client.adbi_client as t
+import spr_adbi.common.adbi_io
 from spr_adbi.const import ENV_KEY_ADBI_BASE_DIR, ENV_KEY_SQS_NAME
 
 WORKING_DIR = 's3://my_bucket/adbi'
@@ -20,7 +17,7 @@ def test_create_s3_client():
     assert obj.env_base_dir == WORKING_DIR
 
     obj._prepare_writer("pid")
-    assert isinstance(obj.io_client, t.ADBIClientS3IO)
+    assert isinstance(obj.io_client, spr_adbi.common.adbi_io.ADBIClientS3IO)
     assert obj.io_client.base_dir == f"{WORKING_DIR}/pid"
 
 
