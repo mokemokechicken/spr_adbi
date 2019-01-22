@@ -10,6 +10,7 @@ def main():
     if not is_success:
         print("finish error")
     else:
+        print("finish success")
         output = job.get_output()
         filenames = output.get_filenames()
         print(filenames)
