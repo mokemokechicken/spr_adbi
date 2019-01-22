@@ -3,12 +3,14 @@ import os
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
+from time import time, sleep
 from typing import List, Optional, Union, Iterable, Tuple
 from uuid import uuid4
 
 import boto3
 
-from spr_adbi.const import ENV_KEY_ADBI_BASE_DIR, PATH_ARGS, PATH_STDIN, PATH_INPUT_FILES, ENV_KEY_SQS_NAME
+from spr_adbi.const import ENV_KEY_ADBI_BASE_DIR, PATH_ARGS, PATH_STDIN, PATH_INPUT_FILES, ENV_KEY_SQS_NAME, \
+    PATH_STATUS, PATH_PROGRESS, STATUS_SUCCESS, STATUS_ERROR
 from spr_adbi.util import s3_util
 from spr_adbi.util.datetime_util import JST
 from spr_adbi.util.s3_util import get_s3_client, upload_fileobj_to_s3, upload_file_to_s3, download_as_data_from_s3, \
@@ -29,9 +31,9 @@ def create_client(env: dict = None):
 
 
 class ADBIClient:
-    def __init__(self, base_dir: str, **kwargs):
-        assert base_dir.startswith("s3://")
-        self.base_dir = base_dir
+    def __init__(self, env_base_dir: str, **kwargs):
+        assert env_base_dir.startswith("s3://")
+        self.env_base_dir = env_base_dir
         self.options = kwargs
         self.io_client: ADBIClientIO = None
         self._setup()
@@ -60,7 +62,8 @@ class ADBIClient:
         message = json.dumps([func_id, self.io_client.base_dir])
 
         queue = self._prepare_queue_client()
-        response = queue.send_message(MessageBody=message)
+        response = queue.send_message(MessageBody=message, MessageGroupId=process_id,
+                                      MessageDeduplicationId=process_id)
         return ADBIJob(base_dir=self.io_client.base_dir,
                        io_client=self.io_client,
                        queue_name=self.queue_name,
@@ -77,7 +80,7 @@ class ADBIClient:
         return self.options[ENV_KEY_SQS_NAME]
 
     def _prepare_writer(self, process_id):
-        target_dir = f"{self.base_dir}/{process_id}"
+        target_dir = f"{self.env_base_dir}/{process_id}"
         self.io_client = ADBIClientS3IO(target_dir)
 
     def _write_input_data(self, args: Iterable[str], stdin, input_file: dict, input_file_info: dict):
@@ -120,7 +123,7 @@ class ADBIClientIO:
     def write_file(self, path, local_path):
         self._write_file(path, local_path)
 
-    def read(self, path) -> bytes:
+    def read(self, path) -> Optional[bytes]:
         return self._read(path)
 
     def get_output_filenames(self) -> List[str]:
@@ -153,8 +156,9 @@ class ADBIClientS3IO(ADBIClientIO):
     def _write_file(self, path, local_path):
         upload_file_to_s3(self.client, local_path, path)
 
-    def _read(self, path: str) -> bytes:
+    def _read(self, path: str) -> Optional[bytes]:
         path = f'{self.base_dir}/{path}'
+        # TODO: catch 404? -> return None
         return download_as_data_from_s3(self.client, path)
 
     def _get_output_filenames(self) -> List[str]:
@@ -174,6 +178,49 @@ class ADBIJob:
         self.io_client: ADBIClientIO = io_client
         self.queue_name: Optional[str] = queue_name
         self.queue_message_id: Optional[str] = queue_message_id
+        self._finished = False
+        self._final_status = None
+
+    def get_status(self) -> Optional[str]:
+        status = self.io_client.read(PATH_STATUS)
+        if status is not None:
+            return str(status).strip()
+
+    def get_progress(self) -> Optional[str]:
+        progress = self.io_client.read(PATH_PROGRESS)
+        if progress is not None:
+            return str(progress).strip()
+
+    @property
+    def finished(self) -> bool:
+        if not self._finished:
+            status = self.get_status()
+            self._finished = status in (STATUS_SUCCESS, STATUS_ERROR)
+            if self._finished:
+                self._final_status = status
+        return self._finished
+
+    def is_success(self) -> bool:
+        return self.finished and self._final_status == STATUS_SUCCESS
+
+    def is_error(self) -> bool:
+        return self.finished and self._final_status == STATUS_ERROR
+
+    def wait(self, timeout=3600, raise_if_timeout=True, polling_interval=3) -> Optional[bool]:
+        start_time = time()
+        while time() - start_time < timeout:
+            if self.finished:
+                return self.is_success()
+            sleep(polling_interval)
+
+        if raise_if_timeout:
+            raise ADBITimeout()
+        else:
+            return None
+
+
+class ADBITimeout(Exception):
+    pass
 
 
 class ADBIOutput:
