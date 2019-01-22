@@ -1,13 +1,15 @@
 import json
 import os
 from collections import namedtuple
+from datetime import datetime
 from logging import getLogger
 from time import sleep
 
 from spr_adbi.common.adbi_io import ADBIS3IO
 from spr_adbi.common.resolver import WorkerResolver, WorkerInfo
 from spr_adbi.const import ENV_KEY_SQS_NAME, STATUS_WILL_DEQUEUE, STATUS_DEQUEUED, PATH_STATUS, STATUS_ERROR, \
-    PATH_PROGRESS
+    PATH_PROGRESS, STATUS_RUNNING
+from spr_adbi.util.datetime_util import JST
 from spr_adbi.util.s3_util import create_boto3_session_of_assume_role_delayed
 
 logger = getLogger(__name__)
@@ -82,6 +84,7 @@ class ADBIDispatcher:
 
     @staticmethod
     def handle_message(message: QueueMessage, worker_info: WorkerInfo):
+        # TODO: 並列数の制御
         logger.info(f"start handling message {message.func_id} {message.s3_uri}")
         manager = WorkerManager(worker_info, message.s3_uri)
         manager.set_status(STATUS_WILL_DEQUEUE)
@@ -104,15 +107,20 @@ class WorkerManager:
         self.io_client.write(PATH_STATUS, str(value))
 
     def run(self, max_retry=1):
+        success = False
         for retry_idx in range(1, max_retry+1):
-            if retry_idx > 1:
-                logger.info(f"retry worker(try={retry_idx})")
-            self.cleanup_workspace()
-            success = self.start_worker(retry_idx)
-            if not success:
-                self.set_status(STATUS_ERROR)
-                continue
-            break
+            try:
+                if retry_idx > 1:
+                    logger.info(f"retry worker(try={retry_idx})")
+                self.cleanup_workspace()
+                success = self.start_worker(retry_idx)
+            except Exception as e:
+                logger.error(f"Error Happen: {e}", stack_info=True)
+
+            if success:
+                return True
+
+            self.set_status(STATUS_ERROR)
 
     def cleanup_workspace(self):
         filenames = self.io_client.get_filenames()
@@ -121,3 +129,23 @@ class WorkerManager:
                 self.io_client.delete(filename)
             elif filename.startswith("output/"):
                 self.io_client.delete(filename)
+
+    def start_worker(self, retry_idx: int) -> bool:
+        log_dir = f"run-{retry_idx}"
+        self.io_client.write(f"{log_dir}/start_time", datetime.now(tz=JST).isoformat())
+        success = stdout = stderr = None
+        self.set_status(STATUS_RUNNING)
+        try:
+            success, stdout, stderr = self.run_container()
+        except Exception as e:
+            logger.error(f"error in run container: {e}", stack_info=True)
+
+        self.io_client.write(f"{log_dir}/stdout", stdout)
+        self.io_client.write(f"{log_dir}/stderr", stderr)
+        self.io_client.write(f"{log_dir}/end_time", datetime.now(tz=JST).isoformat())
+        self.io_client.write(f"{log_dir}/status", self.io_client.read(PATH_STATUS))
+
+        return success
+
+    def run_container(self):
+        raise NotImplemented()
