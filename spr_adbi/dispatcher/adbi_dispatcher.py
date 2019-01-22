@@ -112,6 +112,14 @@ class WorkerManager:
 
     def run(self, max_retry=1):
         success = False
+
+        try:
+            self.login_container_registry()
+            self.pull_container()
+        except Exception as e:
+            logger.error(f"fail to fetch container {e}", stack_info=True)
+            return False
+
         for retry_idx in range(1, max_retry+1):
             try:
                 if retry_idx > 1:
@@ -153,6 +161,12 @@ class WorkerManager:
         self.io_client.write(f"{log_dir}/status", self.io_client.read(PATH_STATUS))
 
         return success
+
+    def login_container_registry(self):
+        pass
+
+    def pull_container(self):
+        pass
 
     def run_container(self):
         raise NotImplemented()
