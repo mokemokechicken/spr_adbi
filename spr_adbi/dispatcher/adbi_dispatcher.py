@@ -8,6 +8,7 @@ from time import sleep
 from typing import Callable
 
 from spr_adbi.common.adbi_io import ADBIS3IO
+from spr_adbi.common.container import AWSContainerManager, ContainerManager
 from spr_adbi.common.resolver import WorkerResolver, WorkerInfo
 from spr_adbi.const import ENV_KEY_SQS_NAME, STATUS_WILL_DEQUEUE, STATUS_DEQUEUED, PATH_STATUS, STATUS_ERROR, \
     PATH_PROGRESS, STATUS_RUNNING, ENV_KEY_MAX_WORKER
@@ -98,13 +99,17 @@ class ADBIDispatcher:
 
 
 class WorkerManager:
-    def __init__(self, worker_info: WorkerInfo, s3_uri: str):
+    def __init__(self, worker_info: WorkerInfo, base_uri: str):
         self.worker_info = worker_info
-        self.s3_uri = s3_uri
-        self.io_client = self.create_io_client(s3_uri)
+        self.base_uri = base_uri
+        self.io_client = self.create_io_client(base_uri)
+        self.container_manager = self.create_container_manager(worker_info, base_uri)
 
-    def create_io_client(self, s3_uri):
-        return ADBIS3IO(s3_uri)
+    def create_io_client(self, base_uri):
+        return ADBIS3IO(base_uri)
+
+    def create_container_manager(self, worker_info, base_uri) -> ContainerManager:
+        return AWSContainerManager(worker_info, base_uri)
 
     def set_status(self, value):
         logger.info(f"set status to {value}")
@@ -114,8 +119,8 @@ class WorkerManager:
         success = False
 
         try:
-            self.login_container_registry()
-            self.pull_container()
+            self.container_manager.login_container_registry()
+            self.container_manager.pull_container()
         except Exception as e:
             logger.error(f"fail to fetch container {e}", stack_info=True)
             return False
@@ -130,11 +135,11 @@ class WorkerManager:
                 logger.warning(f"Error Happen: {e}", stack_info=True)
 
             if success:
-                logger.info(f"success to process {self.s3_uri}")
+                logger.info(f"success to process {self.base_uri}")
                 return True
 
             self.set_status(STATUS_ERROR)
-        logger.warning(f"fail to process {self.s3_uri}")
+        logger.warning(f"fail to process {self.base_uri}")
 
     def cleanup_workspace(self):
         filenames = self.io_client.get_filenames()
@@ -151,7 +156,7 @@ class WorkerManager:
 
         success = stdout = stderr = None
         try:
-            success, stdout, stderr = self.run_container()
+            success, stdout, stderr = self.container_manager.run_container()
         except Exception as e:
             logger.error(f"error in run container: {e}", stack_info=True)
 
@@ -162,11 +167,4 @@ class WorkerManager:
 
         return success
 
-    def login_container_registry(self):
-        pass
 
-    def pull_container(self):
-        pass
-
-    def run_container(self):
-        raise NotImplemented()
