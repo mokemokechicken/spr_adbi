@@ -14,4 +14,4 @@ RUN pipenv install
 COPY ./src/ ./src/
 COPY status.txt ./
 
-ENTRYPOINT ["pipenv", "run", "echo"]
+ENTRYPOINT ["pipenv", "run"]
