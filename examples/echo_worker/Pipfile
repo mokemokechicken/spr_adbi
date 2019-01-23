@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-spr-adbi = {ref = "master", git = "https://github.com/mokemokechicken/spr_adbi.git"}
+spr-adbi = {ref = "06a4ac0", git = "https://github.com/mokemokechicken/spr_adbi.git"}
 
 [dev-packages]
 

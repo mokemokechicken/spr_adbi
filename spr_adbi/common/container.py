@@ -57,6 +57,7 @@ class AWSContainerManager(ContainerManager):
         return self.ecr_client.meta.region_name
 
     def login_container_registry(self):
+        logger.info("logging in docker registry")
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ecr.html#ECR.Client.get_authorization_token
         registry_ids = os.environ.get(ENV_KEY_ECR_ACCOUNT_IDS, "").split(",")
         response = self.ecr_client.get_authorization_token(registryIds=registry_ids)
@@ -71,6 +72,7 @@ class AWSContainerManager(ContainerManager):
         self.docker_client.login(username=user_name, password=password, registry=registry_url)
 
     def pull_container(self):
+        logger.info(f"pulling docker container {self.worker_info.container_id}")
         self.docker_client.images.pull(self.worker_info.container_id)
 
     def run_container(self, runtime_config=None):
@@ -80,6 +82,7 @@ class AWSContainerManager(ContainerManager):
             https://github.com/docker/docker-py/blob/master/docker/models/containers.py#L506
         :return: (success:bool, stdout, stderr)
         """
+        logger.info("run container")
         runtime_config = runtime_config or {}
         commands = self.worker_info.entry_point + [self.base_uri]
         try:
