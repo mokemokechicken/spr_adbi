@@ -4,6 +4,7 @@ from pathlib import Path
 from pytest_mock import MockFixture
 
 import spr_adbi.worker.adbi_worker as t
+from spr_adbi.common.adbi_io import ADBIS3IO
 
 TMP_DIR = str((Path(__file__).parent.parent.parent / "tmp/test").absolute())
 TP = Path(TMP_DIR)
@@ -12,7 +13,8 @@ WORKING_DIR = "s3://bucket/my/path"
 
 def test_create_worker():
     obj = t.create_worker([WORKING_DIR])
-    assert isinstance(obj, t.S3ADBIWorker)
+    assert isinstance(obj, t.ADBIWorker)
+    assert isinstance(obj.io_client, ADBIS3IO)
     assert obj.storage_dir == WORKING_DIR
 
 

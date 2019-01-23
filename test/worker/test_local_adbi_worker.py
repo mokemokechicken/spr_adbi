@@ -4,6 +4,7 @@ from pathlib import Path
 from pytest_mock import MockFixture
 
 import spr_adbi.worker.adbi_worker as t
+from spr_adbi.common.adbi_io import ADBILocalIO
 
 TMP_DIR = str((Path(__file__).parent.parent.parent / "tmp/test").absolute())
 WORKING_DIR = TMP_DIR + "/working"
@@ -13,7 +14,8 @@ WP = Path(WORKING_DIR)
 
 def test_create_worker():
     obj = t.create_worker([WORKING_DIR])
-    assert isinstance(obj, t.LocalADBIWorker)
+    assert isinstance(obj, t.ADBIWorker)
+    assert isinstance(obj.io_client, ADBILocalIO)
     assert obj.storage_dir == WORKING_DIR
 
 

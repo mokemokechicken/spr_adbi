@@ -63,11 +63,10 @@ class ADBILocalIO(ADBIIO):
     def _setup(self):
         os.makedirs(self.base_dir, exist_ok=True)
 
-    def _write(self, path: str, data: Optional[str, bytes]):
-        mode = "wt" if isinstance(data, str) else "wb"
+    def _write(self, path: str, data: bytes):
         path = f'{self.base_dir}/{path}'
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, mode) as f:
+        with open(path, "wb") as f:
             f.write(data)
 
     def _write_file(self, path, local_path):
