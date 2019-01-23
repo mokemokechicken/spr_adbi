@@ -1,11 +1,15 @@
 import json
 import os
 import sys
+from logging import getLogger
 from traceback import format_exception
 from typing import List, Optional, ByteString
 
 from spr_adbi.common.adbi_io import ADBIIO, ADBIS3IO, ADBILocalIO
 from spr_adbi.const import STATUS_SUCCESS, STATUS_ERROR, PATH_STDIN, PATH_ARGS, PATH_PROGRESS, PATH_STATUS
+
+
+logger = getLogger(__name__)
 
 
 def create_worker(args: List[str] = None):
@@ -28,6 +32,9 @@ class ADBIWorker:
         self.storage_dir = args[0]
         self.io_client: ADBIIO = None
         self._args = args[1:]
+
+        if self.storage_dir.endswith("/"):
+            self.storage_dir = self.storage_dir[:-1]
         self._setup()
 
     def _setup(self):
@@ -77,6 +84,7 @@ class ADBIWorker:
         assert relative_path
         if relative_path[0] == "/":
             relative_path = relative_path[1:]
+        logger.info(f"reading from {relative_path}")
         return self.io_client.read(relative_path)
 
     def write(self, relative_path: str, data):
@@ -89,15 +97,18 @@ class ADBIWorker:
         assert relative_path
         if relative_path[0] == "/":
             relative_path = relative_path[1:]
+        logger.info(f"writing to {relative_path}")
         self.io_client.write(relative_path, data)
 
     def write_file(self, relative_path, local_path):
         assert relative_path
         if relative_path[0] == "/":
             relative_path = relative_path[1:]
+        logger.info(f"writing {local_path} file to {relative_path}")
         self.io_client.write_file(relative_path, local_path)
 
     def set_progress(self, message: str):
+        logger.info(f"progress: {message}")
         self.io_client.write(PATH_PROGRESS, message)
 
     def success(self, output_info: dict = None, output_file_info: dict = None):
@@ -111,6 +122,7 @@ class ADBIWorker:
             value: local file path
         :return:
         """
+        logger.info(f"success")
         self.output_info(output_info, output_file_info)
         self.io_client.write(PATH_STATUS, STATUS_SUCCESS)
         self.finished = True
@@ -127,6 +139,7 @@ class ADBIWorker:
             value: local file path
         :return:
         """
+        logger.info(f"error")
         output_info = output_info or {}
         output_info['__error__.txt'] = message
         self.output_info(output_info, output_file_info)

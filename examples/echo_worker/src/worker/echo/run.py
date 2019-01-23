@@ -1,9 +1,12 @@
 import json
+from logging import basicConfig, INFO
 
 from spr_adbi.worker.adbi_worker import create_worker, ADBIWorker
 
 
 def start():
+    #getLogger().addHandler(StreamHandler())
+    basicConfig(level=INFO)
     with create_worker() as w:
         EchoWorker(w).start()
 

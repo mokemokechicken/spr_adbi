@@ -41,6 +41,10 @@ class ADBIClient:
         self.options = kwargs
         self.io_client: ADBIIO = None
         self._aws_session = None
+
+        if self.env_base_dir.endswith("/"):
+            self.env_base_dir = self.env_base_dir[:-1]
+
         self._setup()
 
     def request(self, func_id, args: Optional[Union[List, Tuple]] = None, stdin: Optional[Union[bytes, str]] = None,
