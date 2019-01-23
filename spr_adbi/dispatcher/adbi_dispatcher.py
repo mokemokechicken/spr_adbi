@@ -64,6 +64,7 @@ class ADBIDispatcher:
                 # thread にする必要はないが、thread poolの空きを保証するためにこうしておく
                 future = self.thread_pool.submit(self.fetch_message)
                 message = future.result()
+                print(message)
                 worker_info = self.resolver.resolve(message.func_id)
 
                 if worker_info:
@@ -73,7 +74,7 @@ class ADBIDispatcher:
                     message.message.change_visibility(VisibilityTimeout=0)
                     sleep(5)
             except Exception as e:
-                logger.warning(f"error happen: {e}", stack_info=True)
+                logger.warning(f"error happen in watch: {e}", stack_info=True)
                 sleep(5)
 
     def fetch_message(self):
@@ -82,7 +83,7 @@ class ADBIDispatcher:
             if not messages:
                 continue
             msg = messages[0]
-            message_body = json.loads(msg.body())
+            message_body = json.loads(msg.body)
             if not isinstance(message_body, list) or len(message_body) != 2:
                 logger.warning(f'illegal message: {message_body}')
                 msg.delete()
@@ -132,7 +133,7 @@ class WorkerManager:
                 self.cleanup_workspace()
                 success = self.start_worker(retry_idx)
             except Exception as e:
-                logger.warning(f"Error Happen: {e}", stack_info=True)
+                logger.warning(f"Error Happen in running worker: {e}", stack_info=True)
 
             if success:
                 logger.info(f"success to process {self.base_uri}")
@@ -142,6 +143,7 @@ class WorkerManager:
         logger.warning(f"fail to process {self.base_uri}")
 
     def cleanup_workspace(self):
+        logger.info("cleanup workspace")
         filenames = self.io_client.get_filenames()
         for filename in filenames:
             if filename == PATH_PROGRESS:
@@ -150,6 +152,7 @@ class WorkerManager:
                 self.io_client.delete(filename)
 
     def start_worker(self, retry_idx: int) -> bool:
+        logger.info("start worker")
         log_dir = f"run-{retry_idx}"
         self.io_client.write(f"{log_dir}/start_time", datetime.now(tz=JST).isoformat())
         self.set_status(STATUS_RUNNING)
@@ -158,7 +161,7 @@ class WorkerManager:
         try:
             success, stdout, stderr = self.container_manager.run_container()
         except Exception as e:
-            logger.error(f"error in run container: {e}", stack_info=True)
+            logger.warning(f"error in running container: {e}", stack_info=True)
 
         self.io_client.write(f"{log_dir}/stdout", stdout)
         self.io_client.write(f"{log_dir}/stderr", stderr)

@@ -72,8 +72,8 @@ class AWSContainerManager(ContainerManager):
         self.docker_client.login(username=user_name, password=password, registry=registry_url)
 
     def pull_container(self):
-        logger.info(f"pulling docker container {self.worker_info.container_id}")
-        self.docker_client.images.pull(self.worker_info.container_id)
+        logger.info(f"pulling docker container {self.worker_info.image_id}")
+        self.docker_client.images.pull(self.worker_info.image_id)
 
     def run_container(self, runtime_config=None):
         """
@@ -86,7 +86,7 @@ class AWSContainerManager(ContainerManager):
         runtime_config = runtime_config or {}
         commands = self.worker_info.entry_point + [self.base_uri]
         try:
-            ret = self.docker_client.containers.run(self.worker_info.container_id, commands, stdout=True, stderr=True,
+            ret = self.docker_client.containers.run(self.worker_info.image_id, commands, stdout=True, stderr=True,
                                                     remove=True, **runtime_config)
             return True, ret, None
         except Exception as e:

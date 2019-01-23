@@ -6,10 +6,10 @@ from spr_adbi.common.container import AWSContainerManager
 from spr_adbi.common.resolver import WorkerInfo
 
 
-def main(container_id, base_uri, entry_point):
+def main(image_id, base_uri, entry_point):
     basicConfig(level=INFO)
 
-    wi = WorkerInfo(container_id, entry_point)
+    wi = WorkerInfo(image_id, entry_point)
     manager = AWSContainerManager(wi, base_uri)
     manager.login_container_registry()
     manager.pull_container()

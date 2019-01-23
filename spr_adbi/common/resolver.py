@@ -2,11 +2,11 @@ from typing import Optional, List
 
 
 class WorkerInfo:
-    container_id: str
+    image_id: str
     entry_point: List[str]
 
-    def __init__(self, container_id, entry_point):
-        self.container_id = container_id
+    def __init__(self, image_id, entry_point):
+        self.image_id = image_id
         self.entry_point = entry_point
 
 

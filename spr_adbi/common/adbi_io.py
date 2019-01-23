@@ -20,6 +20,8 @@ class ADBIIO:
         pass
 
     def write(self, path, data: Union[str, bytes]):
+        if data is None:
+            return
         assert isinstance(data, (str, bytes))
         if isinstance(data, str):
             data = data.encode()
