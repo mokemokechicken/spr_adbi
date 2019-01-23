@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime
+from logging import getLogger
 from time import time, sleep
 from typing import List, Optional, Union, Iterable, Tuple
 from uuid import uuid4
@@ -10,6 +11,9 @@ from spr_adbi.const import ENV_KEY_ADBI_BASE_DIR, PATH_ARGS, PATH_STDIN, PATH_IN
 from spr_adbi.common.adbi_io import ADBIIO, ADBIS3IO
 from spr_adbi.util.datetime_util import JST
 from spr_adbi.util.s3_util import create_boto3_session_of_assume_role_delayed
+
+
+logger = getLogger(__name__)
 
 
 def create_client(env: dict = None):
@@ -133,12 +137,12 @@ class ADBIJob:
     def get_status(self) -> Optional[str]:
         status = self.io_client.read(PATH_STATUS)
         if status is not None:
-            return str(status).strip()
+            return status.decode().strip()
 
     def get_progress(self) -> Optional[str]:
         progress = self.io_client.read(PATH_PROGRESS)
         if progress is not None:
-            return str(progress).strip()
+            return progress.decode().strip()
 
     @property
     def s3_uri(self):
@@ -148,6 +152,8 @@ class ADBIJob:
     def finished(self) -> bool:
         if not self._finished:
             status = self.get_status()
+            logger.info(f"check finished: status={status}")
+
             self._finished = status in (STATUS_SUCCESS, STATUS_ERROR)
             if self._finished:
                 self._final_status = status

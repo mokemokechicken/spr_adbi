@@ -159,7 +159,7 @@ class WorkerManager:
 
         success = stdout = stderr = None
         try:
-            success, stdout, stderr = self.container_manager.run_container()
+            success, stdout, stderr = self.container_manager.run_container(self.worker_info.runtime_config)
         except Exception as e:
             logger.warning(f"error in running container: {e}", stack_info=True)
 

@@ -25,20 +25,31 @@ def main(image_id, entry_point):
     # executor = ThreadPoolExecutor(max_workers=1)
     # executor.submit(run_dispatcher, image_id, entry_point)
 
-    job = push_request()
-    # watch_job(job)
+    jobs = [push_request(i) for i in range(20)]
+    executor = ThreadPoolExecutor(max_workers=1)
+    executor.submit(watch_jobs, jobs)
+
     run_dispatcher(image_id, entry_point)
 
 
 def run_dispatcher(image_id, entry_point):
-    dispatcher = create_dispatcher(ConstantWorkerResolver(image_id, entry_point), WorkerManager)
+    runtime_config = dict(
+        environment=export_env_vars(),
+    )
+    resolver = ConstantWorkerResolver(image_id, entry_point, runtime_config)
+    dispatcher = create_dispatcher(resolver, WorkerManager)
     dispatcher.watch()
 
 
-def push_request():
+def push_request(i):
     client = create_client()
-    job = client.request('test.echo', ["hello", str(datetime.now())])
+    job = client.request('test.echo', ["hello", str(i), str(datetime.now())])
     return job
+
+
+def watch_jobs(jobs):
+    for job in jobs:
+        watch_job(job)
 
 
 def watch_job(job):
@@ -57,12 +68,13 @@ def watch_job(job):
 
 
 class ConstantWorkerResolver(WorkerResolver):
-    def __init__(self, image_id, entry_point):
+    def __init__(self, image_id, entry_point, default_runtime_config=None):
         self.image_id = image_id
         self.entry_point = entry_point
+        self.default_runtime_config = default_runtime_config or {}
 
     def resolve(self, func_id):
-        return WorkerInfo(self.image_id, self.entry_point)
+        return WorkerInfo(self.image_id, self.entry_point, self.default_runtime_config)
 
 
 def export_env_vars():
