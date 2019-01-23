@@ -123,6 +123,8 @@ class ADBIS3IO(ADBIIO):
         _, base_key = split_bucket_and_key(self.base_dir)
         base_key = "/" + base_key
         for key in key_list:
+            if not key.startswith("/"):
+                key = "/" + key
             relative_key = Path(key).relative_to(base_key)
             ret.append(str(relative_key))
         return ret
