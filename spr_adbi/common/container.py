@@ -80,6 +80,9 @@ class AWSContainerManager(ContainerManager):
         :return: (success:bool, stdout, stderr)
         """
         commands = self.worker_info.entry_point + [self.base_uri]
-        ret = self.docker_client.containers.run(self.worker_info.container_id, commands, stdout=True, stderr=True,
-                                                remove=True, **self.runtime_config)
-        print(ret)
+        try:
+            ret = self.docker_client.containers.run(self.worker_info.container_id, commands, stdout=True, stderr=True,
+                                                    remove=True, **self.runtime_config)
+            return True, ret, None
+        except Exception as e:
+            return False, None, str(e)

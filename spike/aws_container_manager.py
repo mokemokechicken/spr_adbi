@@ -9,7 +9,10 @@ def main(container_id, entry_point):
     manager = AWSContainerManager(wi, "s3://bucket/")
     manager.login_container_registry()
     manager.pull_container()
-    manager.run_container()
+    success, stdout, stderr = manager.run_container()
+    print(success)
+    print(stdout)
+    print(stderr)
 
 
 if __name__ == '__main__':
