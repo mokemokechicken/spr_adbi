@@ -1,3 +1,5 @@
+import os
+import shutil
 from io import BytesIO
 from pathlib import Path
 from typing import Union, Optional, List
@@ -35,8 +37,11 @@ class ADBIIO:
     def get_filenames(self) -> List[str]:
         return self._get_filenames()
 
+    def get_input_filenames(self) -> List[str]:
+        return [x for x in self.get_filenames() if x.startswith('input/')]
+
     def get_output_filenames(self) -> List[str]:
-        return self._get_output_filenames()
+        return [x for x in self.get_filenames() if x.startswith('output/')]
 
     def _write(self, path, data: bytes):
         raise NotImplemented()
@@ -50,11 +55,40 @@ class ADBIIO:
     def _delete(self, path):
         raise NotImplemented()
 
-    def _get_output_filenames(self) -> List[str]:
-        raise NotImplemented()
-
     def _get_filenames(self) -> List[str]:
         raise NotImplemented()
+
+
+class ADBILocalIO(ADBIIO):
+    def _setup(self):
+        os.makedirs(self.base_dir, exist_ok=True)
+
+    def _write(self, path: str, data: Optional[str, bytes]):
+        mode = "wt" if isinstance(data, str) else "wb"
+        path = f'{self.base_dir}/{path}'
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, mode) as f:
+            f.write(data)
+
+    def _write_file(self, path, local_path):
+        path = f'{self.base_dir}/{path}'
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        shutil.copy(local_path, path)
+
+    def _read(self, path: str) -> Optional[bytes]:
+        path = f'{self.base_dir}/{path}'
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                return f.read()
+
+    def _delete(self, path):
+        path = f'{self.base_dir}/{path}'
+        if os.path.exists(path):
+            os.unlink(path)
+
+    def _get_filenames(self):
+        base_dir = Path(f"{self.base_dir}")
+        return [str(x.relative_to(self.base_dir)) for x in base_dir.glob("**/*")]
 
 
 class ADBIS3IO(ADBIIO):
@@ -93,7 +127,3 @@ class ADBIS3IO(ADBIIO):
             relative_key = Path(key).relative_to(base_key)
             ret.append(str(relative_key))
         return ret
-
-    def _get_output_filenames(self) -> List[str]:
-        filenames = self._get_filenames()
-        return list(filter(lambda x: x.startswith("output/"), filenames))

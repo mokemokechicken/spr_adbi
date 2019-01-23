@@ -13,17 +13,14 @@ logger = getLogger(__name__)
 
 
 class ContainerManager:
-    def __init__(self, worker_info: WorkerInfo, base_uri: str, runtime_config=None):
+    def __init__(self, worker_info: WorkerInfo, base_uri: str):
         """
 
         :param worker_info:
         :param base_uri:
-        :param runtime_config: kwargs of
-            https://github.com/docker/docker-py/blob/master/docker/models/containers.py#L506
         """
         self.worker_info = worker_info
         self.base_uri = base_uri
-        self.runtime_config = runtime_config or {}
         self.setup()
 
     def setup(self):
@@ -35,9 +32,11 @@ class ContainerManager:
     def pull_container(self):
         pass
 
-    def run_container(self):
+    def run_container(self, runtime_config=None):
         """
 
+        :param dict runtime_config: kwargs of
+            https://github.com/docker/docker-py/blob/master/docker/models/containers.py#L506
         :return: (success:bool, stdout, stderr)
         """
         raise NotImplemented()
@@ -74,15 +73,18 @@ class AWSContainerManager(ContainerManager):
     def pull_container(self):
         self.docker_client.images.pull(self.worker_info.container_id)
 
-    def run_container(self):
+    def run_container(self, runtime_config=None):
         """
 
+        :param dict runtime_config: kwargs of
+            https://github.com/docker/docker-py/blob/master/docker/models/containers.py#L506
         :return: (success:bool, stdout, stderr)
         """
+        runtime_config = runtime_config or {}
         commands = self.worker_info.entry_point + [self.base_uri]
         try:
             ret = self.docker_client.containers.run(self.worker_info.container_id, commands, stdout=True, stderr=True,
-                                                    remove=True, **self.runtime_config)
+                                                    remove=True, **runtime_config)
             return True, ret, None
         except Exception as e:
             return False, None, str(e)
