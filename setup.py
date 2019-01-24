@@ -4,6 +4,7 @@ import sys
 
 install_requires = [
     'boto3',
+    'docker',
 ]
 
 sys.path.append('./test')
