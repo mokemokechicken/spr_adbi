@@ -2,8 +2,8 @@ import os
 import sys
 from logging import basicConfig, INFO
 
-from spr_adbi.common.container import AWSContainerManager
-from spr_adbi.common.resolver import WorkerInfo
+from spr_adbi.dispatcher.container import AWSContainerManager
+from spr_adbi.dispatcher.resolver import WorkerInfo
 
 
 def main(image_id, base_uri, entry_point):

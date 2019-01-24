@@ -5,8 +5,9 @@ from datetime import datetime
 from logging import basicConfig, INFO
 
 from spr_adbi.client.adbi_client import create_client
-from spr_adbi.common.resolver import WorkerResolver, WorkerInfo
-from spr_adbi.dispatcher.adbi_dispatcher import create_dispatcher, WorkerManager
+from spr_adbi.dispatcher.resolver import WorkerResolver, WorkerInfo
+from spr_adbi.dispatcher.adbi_dispatcher import create_dispatcher
+from spr_adbi.dispatcher.worker_manager import WorkerManager
 
 
 def main(image_id, entry_point):

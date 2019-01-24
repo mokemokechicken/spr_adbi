@@ -5,7 +5,7 @@ from logging import getLogger
 import docker
 from docker import DockerClient
 
-from spr_adbi.common.resolver import WorkerInfo
+from spr_adbi.dispatcher.resolver import WorkerInfo
 from spr_adbi.const import ENV_KEY_ECR_ACCOUNT_IDS
 from spr_adbi.util.s3_util import create_boto3_session_of_assume_role_delayed
 
