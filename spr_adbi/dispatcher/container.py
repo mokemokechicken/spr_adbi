@@ -47,14 +47,14 @@ class AWSContainerManager(ContainerManager):
     ecr_client = None
     docker_client: DockerClient = None
 
+    def __init__(self, worker_info: WorkerInfo, base_uri: str, region_name=None):
+        self.region_name = region_name or os.environ.get("AWS_REGION")
+        super().__init__(worker_info, base_uri)
+
     def setup(self):
         super().setup()
-        self.session = create_boto3_session_of_assume_role_delayed()
-        self.ecr_client = self.session.client("ecr")
-
-    @property
-    def region_name(self):
-        return self.ecr_client.meta.region_name
+        self.session = create_boto3_session_of_assume_role_delayed(region_name=self.region_name)
+        self.ecr_client = self.session.client("ecr", region_name=self.region_name)
 
     def login_container_registry(self):
         logger.info("logging in docker registry")

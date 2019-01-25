@@ -9,9 +9,9 @@ from botocore.session import get_session
 logger = getLogger(__name__)
 
 
-def create_boto3_session_of_assume_role_delayed(profile_name=None):
+def create_boto3_session_of_assume_role_delayed(profile_name=None, region_name=None):
     bc_session = get_session()
-    session = Session(botocore_session=bc_session, profile_name=profile_name)
+    session = Session(botocore_session=bc_session, profile_name=profile_name, region_name=region_name)
     cred_resolver = bc_session.get_component('credential_provider')  # type: CredentialResolver
     assume_role = cred_resolver.get_provider("assume-role")
     cred_resolver.remove("assume-role")
@@ -24,7 +24,7 @@ def get_s3_client(region_name=None):
 
     :return:
     """
-    session = create_boto3_session_of_assume_role_delayed()
+    session = create_boto3_session_of_assume_role_delayed(region_name=region_name)
     endpoint_url = os.environ.get('S3_ENDPOINT_URL')
     s3 = session.client('s3', endpoint_url=endpoint_url, region_name=region_name)
     return s3

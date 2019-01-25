@@ -16,13 +16,13 @@ class WorkerManager:
         self.worker_info = worker_info
         self.base_uri = base_uri
         self.io_client = self.create_io_client(base_uri, region_name)
-        self.container_manager = self.create_container_manager(worker_info, base_uri)
+        self.container_manager = self.create_container_manager(worker_info, base_uri, region_name)
 
     def create_io_client(self, base_uri, region_name):
         return ADBIS3IO(base_uri, region_name)
 
-    def create_container_manager(self, worker_info, base_uri) -> ContainerManager:
-        return AWSContainerManager(worker_info, base_uri)
+    def create_container_manager(self, worker_info, base_uri, region_name) -> ContainerManager:
+        return AWSContainerManager(worker_info, base_uri, region_name=region_name)
 
     def set_status(self, value):
         logger.info(f"set status to {value}")
