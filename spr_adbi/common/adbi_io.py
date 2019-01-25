@@ -95,8 +95,12 @@ class ADBILocalIO(ADBIIO):
 class ADBIS3IO(ADBIIO):
     client = None
 
+    def __init__(self, base_uri, region_name=None):
+        super().__init__(base_uri)
+        self.region_name = region_name or os.environ.get('AWS_REGION')
+
     def _setup(self):
-        self.client = get_s3_client()
+        self.client = get_s3_client(region_name=self.region_name)
 
     def _write(self, path: str, data: bytes):
         path = f'{self.base_dir}/{path}'

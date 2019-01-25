@@ -19,14 +19,14 @@ def create_boto3_session_of_assume_role_delayed(profile_name=None):
     return session
 
 
-def get_s3_client():
+def get_s3_client(region_name=None):
     """
 
     :return:
     """
     session = create_boto3_session_of_assume_role_delayed()
     endpoint_url = os.environ.get('S3_ENDPOINT_URL')
-    s3 = session.client('s3', endpoint_url=endpoint_url)
+    s3 = session.client('s3', endpoint_url=endpoint_url, region_name=region_name)
     return s3
 
 
