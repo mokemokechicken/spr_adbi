@@ -75,6 +75,9 @@ class WorkerManager:
         except Exception as e:
             logger.warning(f"error in running container: {e}", stack_info=True)
 
+        if stderr:
+            logger.warning(stderr)
+
         self.io_client.write(f"{log_dir}/stdout", stdout)
         self.io_client.write(f"{log_dir}/stderr", stderr)
         self.io_client.write(f"{log_dir}/end_time", datetime.now(tz=JST).isoformat())
