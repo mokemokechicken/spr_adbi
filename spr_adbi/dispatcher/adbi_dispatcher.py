@@ -47,12 +47,17 @@ class ADBIDispatcher:
     @property
     def queue(self):
         if self._queue is None:
-            self._queue = self.aws_session.resource('sqs').get_queue_by_name(QueueName=self.queue_name)
+            resource = self.aws_session.resource('sqs', region_name=self.region_name)
+            self._queue = resource.get_queue_by_name(QueueName=self.queue_name)
         return self._queue
 
     @property
     def queue_name(self):
         return self.env[ENV_KEY_SQS_NAME]
+
+    @property
+    def region_name(self):
+        return self.env.get('AWS_REGION') or os.environ['AWS_REGION']
 
     def watch(self):
         while True:
