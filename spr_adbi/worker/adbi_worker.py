@@ -163,7 +163,7 @@ class ADBIWorker:
                     self.io_client.write(f"output/{key}", value)
         if output_file_info:
             for key, local_path in output_file_info.items():
-                with open(local_path, "r") as f:
+                with open(local_path, "rb") as f:
                     self.io_client.write(f"output/{key}", f.read())
 
     def get_input_filenames(self) -> List[str]:
