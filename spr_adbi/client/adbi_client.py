@@ -1,11 +1,13 @@
 import json
 import os
+from collections import defaultdict
 from datetime import datetime
 from logging import getLogger
 from time import time, sleep
-from typing import List, Optional, Union, Iterable, Tuple
+from typing import List, Optional, Union, Iterable, Tuple, Callable
 from uuid import uuid4
 
+from spr_adbi.client.job_event import ADBIJobEventChangeStatus, ADBIJobEventChangeProgress, ADBIJobEvent
 from spr_adbi.const import ENV_KEY_ADBI_BASE_DIR, PATH_ARGS, PATH_STDIN, PATH_INPUT_FILES, ENV_KEY_SQS_NAME, \
     PATH_STATUS, PATH_PROGRESS, STATUS_SUCCESS, STATUS_ERROR
 from spr_adbi.common.adbi_io import ADBIIO, ADBIS3IO
@@ -133,11 +135,14 @@ class ADBIJob:
         self.queue_message_id: Optional[str] = queue_message_id
         self._finished = False
         self._final_status = None
+        self._last_status = None
+        self._event_listeners = defaultdict(lambda: [])
 
     def get_status(self) -> Optional[str]:
         status = self.io_client.read(PATH_STATUS)
         if status is not None:
-            return status.decode().strip()
+            self._last_status = status.decode().strip()
+        return self._last_status
 
     def get_progress(self) -> Optional[str]:
         progress = self.io_client.read(PATH_PROGRESS)
@@ -167,9 +172,21 @@ class ADBIJob:
 
     def wait(self, timeout=3600, raise_if_timeout=True, polling_interval=3) -> Optional[bool]:
         start_time = time()
+        last_status = None
+        last_progress = None
         while time() - start_time < timeout:
             if self.finished:
                 return self.is_success()
+
+            if self._last_status != last_status:
+                last_status = self._last_status
+                self._emit(ADBIJobEventChangeStatus(last_status))
+
+            progress = self.get_progress()
+            if progress != last_progress:
+                last_progress = progress
+                self._emit(ADBIJobEventChangeProgress(progress))
+
             sleep(polling_interval)
 
         if raise_if_timeout:
@@ -177,12 +194,23 @@ class ADBIJob:
         else:
             return None
 
+    def on(self, event_name: str, function: Callable):
+        self._event_listeners[event_name].append(function)
+
+    def _emit(self, event: ADBIJobEvent):
+        for function in self._event_listeners[event.event_name]:
+            try:
+                function(event)
+            except Exception as e:
+                logger.warning(f"exception in ADBIJobEvent handler {e}")
+
     def get_output(self):
         """
 
         :rtype: ADBIOutput
         """
         return ADBIOutput(self.io_client)
+
 
 
 class ADBITimeout(Exception):

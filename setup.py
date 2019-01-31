@@ -11,7 +11,7 @@ sys.path.append('./test')
 
 setup(
     name='spr_adbi',
-    version='0.0.1',
+    version='0.2.0',
     description='Sprocket ADBI Library',
     author='mokemokechicken',
     author_email='mokemokechicken@gmail.com',
