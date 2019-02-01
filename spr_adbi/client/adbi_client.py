@@ -194,12 +194,12 @@ class ADBIJob:
 
             if self._last_status != last_status:
                 last_status = self._last_status
-                self._emit(ADBIJobEventChangeStatus(last_status))
+                self._emit(ADBIJobEventChangeStatus(self, last_status))
 
             progress = self.get_progress()
             if progress != last_progress:
                 last_progress = progress
-                self._emit(ADBIJobEventChangeProgress(progress))
+                self._emit(ADBIJobEventChangeProgress(self, progress))
 
             sleep(polling_interval)
 
