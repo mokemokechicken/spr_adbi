@@ -9,6 +9,7 @@ PATH_ARGS = "input/args"
 PATH_INPUT_FILES = "input/files"
 PATH_STATUS = "status"
 PATH_PROGRESS = "progress"
+PATH_PROGRESS_LOG = "progress_log"
 
 ENV_KEY_ADBI_BASE_DIR = 'ADBI_BASE_DIR'
 ENV_KEY_SQS_NAME = 'ADBI_SQS_NAME'

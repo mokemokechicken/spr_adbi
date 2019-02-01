@@ -1,6 +1,6 @@
 import json
 import os
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from datetime import datetime
 from logging import getLogger
 from time import time, sleep
@@ -8,12 +8,12 @@ from typing import List, Optional, Union, Iterable, Tuple, Callable
 from uuid import uuid4
 
 from spr_adbi.client.job_event import ADBIJobEventChangeStatus, ADBIJobEventChangeProgress, ADBIJobEvent
+from spr_adbi.common_types import ProgressLog
 from spr_adbi.const import ENV_KEY_ADBI_BASE_DIR, PATH_ARGS, PATH_STDIN, PATH_INPUT_FILES, ENV_KEY_SQS_NAME, \
-    PATH_STATUS, PATH_PROGRESS, STATUS_SUCCESS, STATUS_ERROR
+    PATH_STATUS, PATH_PROGRESS, STATUS_SUCCESS, STATUS_ERROR, PATH_PROGRESS_LOG
 from spr_adbi.common.adbi_io import ADBIIO, ADBIS3IO
 from spr_adbi.util.datetime_util import JST
 from spr_adbi.util.s3_util import create_boto3_session_of_assume_role_delayed
-
 
 logger = getLogger(__name__)
 
@@ -149,6 +149,20 @@ class ADBIJob:
         if progress is not None:
             return progress.decode().strip()
 
+    def get_progress_log(self) -> List[ProgressLog]:
+        ret = []
+        progress_log = self.io_client.read(PATH_PROGRESS_LOG)
+
+        # noinspection PyBroadException
+        try:
+            if progress_log:
+                for log in json.loads(progress_log.decode(), encoding='utf8'):
+                    ret.append(ProgressLog(log.get('time'), log.get('message')))
+        except Exception:
+            pass
+
+        return ret
+
     @property
     def s3_uri(self):
         return self.io_client.base_dir
@@ -210,7 +224,6 @@ class ADBIJob:
         :rtype: ADBIOutput
         """
         return ADBIOutput(self.io_client)
-
 
 
 class ADBITimeout(Exception):
