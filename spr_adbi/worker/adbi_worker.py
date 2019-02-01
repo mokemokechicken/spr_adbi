@@ -2,12 +2,11 @@ import json
 import os
 import sys
 from logging import getLogger
-from time import time
+import time
 from traceback import format_exception
 from typing import List, Optional, ByteString
 
 from spr_adbi.common.adbi_io import ADBIIO, ADBIS3IO, ADBILocalIO
-from spr_adbi.common_types import ProgressLog
 from spr_adbi.const import STATUS_SUCCESS, STATUS_ERROR, PATH_STDIN, PATH_ARGS, PATH_PROGRESS, PATH_STATUS, \
     PATH_PROGRESS_LOG
 
@@ -116,7 +115,7 @@ class ADBIWorker:
         self._append_progress_log(message)
 
     def _append_progress_log(self, message: str):
-        self.progress_log.append(dict(time=time(), message=message))
+        self.progress_log.append(dict(time=time.time(), message=message))
         self.io_client.write(PATH_PROGRESS_LOG, json.dumps(self.progress_log, ensure_ascii=False))
 
     def success(self, output_info: dict = None, output_file_info: dict = None):
