@@ -1,13 +1,14 @@
 from time import time
 
-from spr_adbi.client.adbi_client import ADBIJob
-
 
 class ADBIJobEvent:
     event_name: str = None
-    job: ADBIJob
 
     def __init__(self, job):
+        """
+
+        :param job: spr_adbi.client.adbi_client.ADBIJob
+        """
         self.event_time = time()
         self.job = job
 
