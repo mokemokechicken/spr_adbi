@@ -90,7 +90,8 @@ class ADBIClient:
     @property
     def aws_session(self):
         if self._aws_session is None:
-            self._aws_session = create_boto3_session_of_assume_role_delayed()
+            region_name = self.options.get('AWS_REGION')
+            self._aws_session = create_boto3_session_of_assume_role_delayed(region_name=region_name)
         return self._aws_session
 
     def _prepare_queue_client(self):
