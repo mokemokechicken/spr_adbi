@@ -108,6 +108,7 @@ class ADBIS3IO(ADBIIO):
             upload_fileobj_to_s3(self.client, f, path)
 
     def _write_file(self, path, local_path):
+        path = f'{self.base_dir}/{path}'
         upload_file_to_s3(self.client, local_path, path)
 
     def _read(self, path: str) -> Optional[bytes]:
