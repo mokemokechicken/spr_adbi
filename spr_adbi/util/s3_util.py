@@ -82,8 +82,21 @@ def upload_fileobj_to_s3(s3, fileobj, s3_path):
 
 def list_paths(s3, s3_path):
     bucket_name, key = split_bucket_and_key(s3_path)
-    response = s3.list_objects(Bucket=bucket_name, Prefix=key)
-    return [x["Key"] for x in response.get("Contents") or []]
+    ret = []
+    continuation_token = ''
+    while True:
+        kwargs = {
+            "Bucket": bucket_name,
+            "Prefix": key,
+        }
+        if continuation_token:
+            kwargs['ContinuationToken'] = continuation_token
+        response = s3.list_objects_v2(**kwargs)
+        ret += [x["Key"] for x in response.get("Contents") or []]
+        if not response['IsTruncated']:
+            break
+        continuation_token = response['NextContinuationToken']
+    return ret
 
 
 def delete_file_on_s3(s3, s3_path):
