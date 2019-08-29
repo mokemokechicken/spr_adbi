@@ -82,9 +82,9 @@ class AWSContainerManager(ContainerManager):
             https://github.com/docker/docker-py/blob/master/docker/models/containers.py#L506
         :return: (success:bool, stdout, stderr)
         """
-        logger.info("run container")
         runtime_config = runtime_config or {}
         commands = self.worker_info.entry_point + [self.base_uri]
+        logger.info(f"run container: {self.worker_info.image_id} {commands} {runtime_config}")
         try:
             ret = self.docker_client.containers.run(self.worker_info.image_id, commands, stdout=True, stderr=True,
                                                     remove=True, **runtime_config)
