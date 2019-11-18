@@ -1,6 +1,7 @@
 import os
 import shutil
 from io import BytesIO
+from logging import getLogger
 from pathlib import Path
 from typing import Union, Optional, List
 
@@ -9,6 +10,8 @@ from botocore.exceptions import ClientError
 from spr_adbi.util import s3_util
 from spr_adbi.util.s3_util import get_s3_client, upload_fileobj_to_s3, upload_file_to_s3, download_as_data_from_s3, \
     split_bucket_and_key, delete_file_on_s3
+
+logger = getLogger(__name__)
 
 
 class ADBIIO:
@@ -104,12 +107,22 @@ class ADBIS3IO(ADBIIO):
 
     def _write(self, path: str, data: bytes):
         path = f'{self.base_dir}/{path}'
-        with BytesIO(data) as f:
-            upload_fileobj_to_s3(self.client, f, path)
+        for _ in range(3):
+            try:
+                with BytesIO(data) as f:
+                    upload_fileobj_to_s3(self.client, f, path)
+                return
+            except Exception as e:
+                logger.warning(e, exc_info=True)
 
     def _write_file(self, path, local_path):
         path = f'{self.base_dir}/{path}'
-        upload_file_to_s3(self.client, local_path, path)
+        for _ in range(3):
+            try:
+                upload_file_to_s3(self.client, local_path, path)
+                return
+            except Exception as e:
+                logger.warning(e, exc_info=True)
 
     def _read(self, path: str) -> Optional[bytes]:
         path = f'{self.base_dir}/{path}'
