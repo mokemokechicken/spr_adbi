@@ -59,15 +59,17 @@ class AWSContainerManager(ContainerManager):
     def login_container_registry(self):
         logger.info("logging in docker registry")
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ecr.html#ECR.Client.get_authorization_token
-        registry_ids = os.environ.get(ENV_KEY_ECR_ACCOUNT_IDS, "").split(",")
-        response = self.ecr_client.get_authorization_token(registryIds=registry_ids)
+        # registry_ids = os.environ.get(ENV_KEY_ECR_ACCOUNT_IDS, "").split(",")
+        image_account_id = self.worker_info.image_id.split(".")[0]
+        logger.info(f"account_id: {image_account_id}")
+        response = self.ecr_client.get_authorization_token(registryIds=[image_account_id])
         token = response.get('authorizationData')[0].get('authorizationToken')
         id_pass, _ = base64_decode(token.encode())
         user_name, password = id_pass.decode().split(":")
 
         # docker.login : https://docker-py.readthedocs.io/en/stable/client.html
         self.docker_client = docker.from_env()
-        registry_url = 'https://{account}.dkr.ecr.{region_name}.amazonaws.com/'.format(account=registry_ids[0],
+        registry_url = 'https://{account}.dkr.ecr.{region_name}.amazonaws.com/'.format(account=image_account_id,
                                                                                        region_name=self.region_name)
         self.docker_client.login(username=user_name, password=password, registry=registry_url)
 
