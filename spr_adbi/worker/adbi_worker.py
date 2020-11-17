@@ -67,10 +67,9 @@ class ADBIWorker:
         return ret
 
     def stdin(self) -> Optional[ByteString]:
-        if not os.isatty(0):  # 0 means STDIN
+        data = self.read(PATH_STDIN)
+        if not data and not os.isatty(0):  # 0 means STDIN
             data = sys.stdin.read()
-        else:
-            data = self.read(PATH_STDIN)
 
         if isinstance(data, str):
             return data.encode()
