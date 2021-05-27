@@ -157,7 +157,7 @@ class ADBIJob:
         # noinspection PyBroadException
         try:
             if progress_log:
-                for log in json.loads(progress_log.decode(), encoding='utf8'):
+                for log in json.loads(progress_log.decode()):
                     ret.append(ProgressLog(log.get('time'), log.get('message')))
         except Exception:
             pass
