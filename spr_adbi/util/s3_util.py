@@ -71,13 +71,13 @@ def split_bucket_and_key(s3_path):
 def upload_file_to_s3(s3, local_path, s3_path):
     logger.info(f'upload {local_path} to {s3_path}')
     bucket_name, key = split_bucket_and_key(s3_path)
-    s3.upload_file(local_path, bucket_name, key)
+    s3.upload_file(local_path, bucket_name, key, ExtraArgs={"ACL": "bucket-owner-full-control"})
 
 
 def upload_fileobj_to_s3(s3, fileobj, s3_path):
     logger.info(f'upload fileobj to {s3_path}')
     bucket_name, key = split_bucket_and_key(s3_path)
-    s3.upload_fileobj(fileobj, bucket_name, key)
+    s3.upload_fileobj(fileobj, bucket_name, key, ExtraArgs={"ACL": "bucket-owner-full-control"})
 
 
 def list_paths(s3, s3_path):
