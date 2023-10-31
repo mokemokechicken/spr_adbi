@@ -36,6 +36,7 @@ class WorkerManager:
             self.container_manager.pull_container()
         except Exception as e:
             logger.error(f"fail to fetch container {e}", stack_info=True)
+            self.set_status(STATUS_ERROR)
             return False
 
         for retry_idx in range(1, max_retry+1):
