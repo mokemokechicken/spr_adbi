@@ -30,6 +30,7 @@ def create_worker(args: List[str] = None):
 class ADBIWorker:
     def __init__(self, args: List[str]):
         self.finished = False
+        self.error_called = False
         self.storage_dir = args[0]
         self.io_client: ADBIIO = None
         self._args = args[1:]
@@ -151,6 +152,7 @@ class ADBIWorker:
         self.output_info(output_info, output_file_info)
         self.io_client.write(PATH_STATUS, STATUS_ERROR)
         self.finished = True
+        self.error_called = True
 
     def output_info(self, output_info: dict = None, output_file_info: dict = None):
         """
